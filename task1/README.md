@@ -1,4 +1,4 @@
-# Тестовое задание для onetwotrip
+# Задача 1
 
 Очередь сообщений реализована с помощью Streams, требуется Redis версии 5.
 
@@ -19,6 +19,7 @@
 
 ```bash
 redis-cli XGROUP CREATE messages consumers $ MKSTREAM
+npm install
 node app.js
 ```
 
@@ -35,6 +36,15 @@ docker-compose up -d redis
 docker-compose exec redis redis-cli XGROUP CREATE messages consumers $ MKSTREAM
 docker-compose up --build -d --scale app=10
 docker-compose logs -f app
+```
+
+В логах будет видно, что одно приложение отправляет сообщения, остальные принимают.
+В моем случае генератор — это `app_3`.
+
+Для его остановки нужно выполнить:
+
+```
+docker stop task1_app_3
 ```
 
 ## Вывод ошибок
