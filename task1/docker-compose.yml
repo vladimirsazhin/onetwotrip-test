@@ -1,0 +1,12 @@
+version: '2'
+
+services:
+  redis:
+    image: redis:5-alpine
+    restart: on-failure
+
+  app:
+    build: .
+    links:
+      - redis
+    restart: on-failure
