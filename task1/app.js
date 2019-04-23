@@ -39,7 +39,7 @@ async function detectMode() {
 
 async function runModeDetector() {
   return new Promise((resolve) => {
-    let modeDetector = setInterval(async () => {
+    const modeDetector = setInterval(async () => {
       await detectMode();
 
       if (mode === TERMINATING) {
@@ -60,7 +60,7 @@ async function produce() {
 
 async function runProducer() {
   return new Promise((resolve) => {
-    let producer = setInterval(async () => {
+    const producer = setInterval(async () => {
       if (mode === PRODUCING) {
         await produce();
       }
@@ -94,7 +94,7 @@ async function consume() {
 
 async function runConsumer() {
   return new Promise((resolve) => {
-    let consumer = setInterval(async () => {
+    const consumer = setInterval(async () => {
       if (mode === CONSUMING) {
         await consume();
       }
@@ -104,7 +104,7 @@ async function runConsumer() {
         resolve();
       }
     }, 500);
-  })
+  });
 }
 
 async function shutdown() {
@@ -119,9 +119,7 @@ async function handleError(messageId) {
       if (message.length) {
         const [[, [, data]]] = message;
 
-        await redisClient.xack('messages', 'consumers', messageId).then(() => {
-          return redisClient.xdel('messages', messageId);
-        }).then(() => {
+        await redisClient.xack('messages', 'consumers', messageId).then(() => redisClient.xdel('messages', messageId)).then(() => {
           console.log(`Message ${chalk.bold(messageId)} with data ${chalk.bold(data)} deleted`);
         });
       }
@@ -137,7 +135,7 @@ async function handleErrors() {
       await redisClient.xpending('messages', 'consumers', '-', '+', 1).then(async (message) => {
         if (message.length) {
           const [[messageId,, pendingTime]] = message;
-    
+
           if (pendingTime > 1000) {
             await handleError(messageId);
           }
