@@ -3,6 +3,9 @@ const Redis = require('ioredis');
 const chalk = require('chalk');
 
 
+const EXPIRE_PRODUCER = 'if redis.call("get", "producer") == ARGV[1] then return redis.call("pexpire", "producer", ARGV[2]) else return 0 end';
+const LOCK_TIMEOUT = 1000;
+
 const MODES = ['terminating', 'producing', 'consuming'];
 
 const TERMINATING = 0;
@@ -23,9 +26,14 @@ function setMode(newMode) {
 }
 
 async function detectMode() {
-  redisClient.multi().set('producer', instanceId, 'PX', 1000, 'NX').get('producer').exec((error, results) => {
-    const [, [, producerId]] = results;
-    setMode(producerId === instanceId ? PRODUCING : CONSUMING);
+  await redisClient.set('producer', instanceId, 'PX', LOCK_TIMEOUT, 'NX').then((isProducer) => {
+    if (isProducer === 'OK') {
+      setMode(PRODUCING);
+    } else {
+      redisClient.eval(EXPIRE_PRODUCER, 0, instanceId, LOCK_TIMEOUT).then((result) => {
+        setMode(result === 1 ? PRODUCING : CONSUMING);
+      });
+    }
   });
 }
 
@@ -45,8 +53,7 @@ async function runModeDetector() {
 async function produce() {
   const data = randomBytes(24).toString('hex');
 
-  await redisClient.multi().xadd('messages', '*', 'message', data).pexpire('producer', 1000).exec((error, results) => {
-    const [[, messageId]] = results;
+  await redisClient.xadd('messages', '*', 'message', data).then((messageId) => {
     console.log(`Instance ${chalk.bold(instanceId)} sent message ${chalk.bold(messageId)}`);
   });
 }
